@@ -23,8 +23,11 @@
  #include "WProgram.h"
 #endif
 #include <Adafruit_GFX.h>
+#ifdef ESP8266
+#include <pgmspace.h>
+#else
 #include <avr/pgmspace.h>
-
+#endif
 
 #define ILI9341_TFTWIDTH  240
 #define ILI9341_TFTHEIGHT 320
@@ -110,9 +113,10 @@
 class Adafruit_ILI9341 : public Adafruit_GFX {
 
  public:
-
+#ifndef ESP8266
   Adafruit_ILI9341(int8_t _CS, int8_t _DC, int8_t _MOSI, int8_t _SCLK,
 		   int8_t _RST, int8_t _MISO);
+#endif
   Adafruit_ILI9341(int8_t _CS, int8_t _DC, int8_t _RST = -1);
 
   void     begin(void),
@@ -146,8 +150,6 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
  private:
   uint8_t  tabcolor;
 
-
-
   boolean  hwSPI;
 #if defined (__AVR__) || defined(TEENSYDUINO)
   uint8_t mySPCR;
@@ -158,6 +160,8 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
     volatile RwReg *mosiport, *clkport, *dcport, *rsport, *csport;
     uint32_t  _cs, _dc, _rst, _mosi, _miso, _sclk;
     uint32_t  mosipinmask, clkpinmask, cspinmask, dcpinmask;
+#elif defined (ESP8266)
+    uint32_t  _cs, _dc, _rst;
 #endif
 };
 
