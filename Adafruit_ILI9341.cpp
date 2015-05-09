@@ -42,12 +42,15 @@ Adafruit_ILI9341::Adafruit_ILI9341(int8_t cs, int8_t dc, int8_t mosi,
 
 // Constructor when using hardware SPI.  Faster, but must use SPI pins
 // specific to each board type (e.g. 11,13 for Uno, 51,52 for Mega, etc.)
-#ifdef USE_HW_CS
+#if defined(ILI9341_USE_HW_CS) || defined(ILI9341_USE_NO_CS)
 Adafruit_ILI9341::Adafruit_ILI9341(int8_t dc, int8_t rst) : Adafruit_GFX(ILI9341_TFTWIDTH, ILI9341_TFTHEIGHT) {
   _dc   = dc;
   _rst  = rst;
   hwSPI = true;
-#ifndef ESP8266
+#ifdef ESP8266
+  _dcMask = digitalPinToBitMask(_dc);
+  _rstMask = digitalPinToBitMask(_rst);
+#else
   _mosi  = _sclk = 0;
 #endif
 }
@@ -57,7 +60,11 @@ Adafruit_ILI9341::Adafruit_ILI9341(int8_t dc, int8_t rst) : Adafruit_GFX(ILI9341
     _dc   = dc;
     _rst  = rst;
     hwSPI = true;
-  #ifndef ESP8266
+  #ifdef ESP8266
+    _csMask = digitalPinToBitMask(_cs);
+    _dcMask = digitalPinToBitMask(_dc);
+    _rstMask = digitalPinToBitMask(_rst);
+  #else
     _mosi  = _sclk = 0;
   #endif
   }
@@ -140,12 +147,12 @@ void Adafruit_ILI9341::spiwritePattern(uint8_t * data, uint8_t size, uint32_t re
 
 
 inline void Adafruit_ILI9341::spiCsLow(void) {
-#ifdef USE_DIGITAL_WRITE
+#ifdef ILI9341_USE_DIGITAL_WRITE
     digitalWrite(_cs, LOW);
 #else
 #ifdef ESP8266
-#ifndef USE_HW_CS
-    GPOC = digitalPinToBitMask(_cs);
+#if !defined(ILI9341_USE_HW_CS) && !defined(ILI9341_USE_NO_CS)
+    GPOC = _csMask;
 #endif
 #else
     *csport &= ~cspinmask;
@@ -154,12 +161,12 @@ inline void Adafruit_ILI9341::spiCsLow(void) {
 }
 
 inline void Adafruit_ILI9341::spiCsHigh(void) {
-#ifdef USE_DIGITAL_WRITE
+#ifdef ILI9341_USE_DIGITAL_WRITE
     digitalWrite(_cs, HIGH);
 #else
 #ifdef ESP8266
-#ifndef USE_HW_CS
-    GPOS = digitalPinToBitMask(_cs);
+#if !defined(ILI9341_USE_HW_CS) && !defined(ILI9341_USE_NO_CS)
+    GPOS = _csMask;
 #endif
 #else
     *csport |= cspinmask;
@@ -168,12 +175,12 @@ inline void Adafruit_ILI9341::spiCsHigh(void) {
 }
 
 inline void Adafruit_ILI9341::spiDcLow(void){
-#ifdef USE_DIGITAL_WRITE
+#ifdef ILI9341_USE_DIGITAL_WRITE
     digitalWrite(_dc, LOW);
 #else
 #ifdef ESP8266
 #ifndef USE_HW_CS
-    GPOC = digitalPinToBitMask(_dc);
+    GPOC = _dcMask;
 #endif
 #else
     *dcport &= ~dcpinmask;
@@ -182,11 +189,11 @@ inline void Adafruit_ILI9341::spiDcLow(void){
 }
 
 inline void Adafruit_ILI9341::spiDcHigh(void) {
-#ifdef USE_DIGITAL_WRITE
+#ifdef ILI9341_USE_DIGITAL_WRITE
     digitalWrite(_dc, HIGH);
 #else
 #ifdef ESP8266
-    GPOS = digitalPinToBitMask(_dc);
+    GPOS = _dcMask;
 #else
     *dcport |= dcpinmask;
 #endif
@@ -289,7 +296,7 @@ void Adafruit_ILI9341::commandList(uint8_t *addr) {
 
 
 void Adafruit_ILI9341::begin(void) {
-  if (_rst > 0) {
+  if (_rst > NOT_A_PIN) {
     pinMode(_rst, OUTPUT);
     digitalWrite(_rst, LOW);
   }
@@ -299,7 +306,7 @@ void Adafruit_ILI9341::begin(void) {
   pinMode(_cs, OUTPUT);
 #endif
 #ifndef ESP8266
-#ifndef USE_DIGITAL_WRITE
+#ifndef ILI9341_USE_DIGITAL_WRITE
   csport    = portOutputRegister(digitalPinToPort(_cs));
   cspinmask = digitalPinToBitMask(_cs);
   dcport    = portOutputRegister(digitalPinToPort(_dc));
@@ -343,7 +350,7 @@ void Adafruit_ILI9341::begin(void) {
   }
 #endif
   // toggle RST low to reset
-  if (_rst > 0) {
+  if (_rst > NOT_A_PIN) {
     digitalWrite(_rst, HIGH);
     delay(5);
     digitalWrite(_rst, LOW);
@@ -604,7 +611,7 @@ void Adafruit_ILI9341::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t c
 }
 
 void Adafruit_ILI9341::fillScreen(uint16_t color) {
-  fillRect(0, 0,  _width, _height, color);
+    fillRect(0, 0, _width, _height, color);
 }
 
 // fill a rectangle
@@ -711,9 +718,7 @@ uint8_t Adafruit_ILI9341::spiread(void) {
     SPI.setDataMode(SPI_MODE0);
     r = SPI.transfer(0x00);
 #else
-    spi_begin();
     r = SPI.transfer(0x00);
-    spi_end();
 #endif
   } else {
 #ifndef ESP8266
@@ -731,50 +736,40 @@ uint8_t Adafruit_ILI9341::spiread(void) {
   return r;
 }
 
- uint8_t Adafruit_ILI9341::readdata(void) {
-   digitalWrite(_dc, HIGH);
-#ifndef USE_HW_CS
-   digitalWrite(_cs, LOW);
-#endif
-   uint8_t r = spiread();
-#ifndef USE_HW_CS
-   digitalWrite(_cs, HIGH);
-#endif
-   return r;
+uint8_t Adafruit_ILI9341::readdata(void) {
+    if(hwSPI) spi_begin();
+    spiCsLow();
+    spiDcLow();
+    uint8_t r = spiread();
+    spiCsHigh();
+    if(hwSPI) spi_end();
+    return r;
 }
  
-
 uint8_t Adafruit_ILI9341::readcommand8(uint8_t c, uint8_t index) {
-   if (hwSPI) spi_begin();
-   digitalWrite(_dc, LOW); // command
-#ifndef USE_HW_CS
-   digitalWrite(_cs, LOW);
-#endif
-   spiwrite(0xD9);  // woo sekret command?
-   digitalWrite(_dc, HIGH); // data
-   spiwrite(0x10 + index);
-#ifndef USE_HW_CS
-   digitalWrite(_cs, HIGH);
-#endif
-   digitalWrite(_dc, LOW);
+    if(hwSPI) spi_begin();
+
+    spiCsLow();
+    spiDcLow();
+
+    spiwrite(0xD9);  // woo sekret command?
+    spiDcHigh();
+    spiwrite(0x10 + index);
+
 #ifndef ESP8266
-   digitalWrite(_sclk, LOW);
+    digitalWrite(_sclk, LOW);
 #endif
-#ifndef USE_HW_CS
-   digitalWrite(_cs, LOW);
-#endif
-   spiwrite(c);
- 
-   digitalWrite(_dc, HIGH);
-   uint8_t r = spiread();
-#ifndef USE_HW_CS
-   digitalWrite(_cs, HIGH);
-#endif
-   if (hwSPI) spi_end();
-   return r;
+
+ 	spiDcLow();
+ 	spiwrite(c);
+
+    spiDcHigh();
+    uint8_t r = spiread();
+    spiCsHigh();
+
+    if(hwSPI) spi_end();
+    return r;
 }
-
-
  
 /*
 
