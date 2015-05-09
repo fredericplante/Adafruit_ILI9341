@@ -26,6 +26,10 @@
 #include "wiring_private.h"
 #include <SPI.h>
 
+#ifdef ESP8266
+#define hwSPI true
+#endif
+
 #ifndef ESP8266
 // Constructor when using software SPI.  All output pins are configurable.
 Adafruit_ILI9341::Adafruit_ILI9341(int8_t cs, int8_t dc, int8_t mosi,
@@ -59,12 +63,12 @@ Adafruit_ILI9341::Adafruit_ILI9341(int8_t dc, int8_t rst) : Adafruit_GFX(ILI9341
     _cs   = cs;
     _dc   = dc;
     _rst  = rst;
-    hwSPI = true;
   #ifdef ESP8266
     _csMask = digitalPinToBitMask(_cs);
     _dcMask = digitalPinToBitMask(_dc);
     _rstMask = digitalPinToBitMask(_rst);
   #else
+    hwSPI = true;
     _mosi  = _sclk = 0;
   #endif
   }
@@ -244,13 +248,16 @@ void Adafruit_ILI9341::writeCmdData(uint8_t cmd, uint8_t * data, uint8_t size) {
 // establish settings and protect from interference from other
 // libraries.  Otherwise, they simply do nothing.
 #ifdef SPI_HAS_TRANSACTION
+
+#ifdef ESP8266
+SPISettings spiSettings = SPISettings(F_CPU, MSBFIRST, SPI_MODE0);
+#else
+SPISettings spiSettings =  SPISettings(8000000, MSBFIRST, SPI_MODE0);
+#endif
+
 static inline void spi_begin(void) __attribute__((always_inline));
 static inline void spi_begin(void) {
-#ifdef ESP8266
-  SPI.beginTransaction(SPISettings(F_CPU, MSBFIRST, SPI_MODE0));
-#else
-  SPI.beginTransaction(SPISettings(8000000, MSBFIRST, SPI_MODE0));
-#endif
+  SPI.beginTransaction(spiSettings);
 }
 static inline void spi_end(void) __attribute__((always_inline));
 static inline void spi_end(void) {

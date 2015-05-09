@@ -184,8 +184,9 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
   inline void spiDcLow(void);
 
   uint8_t  tabcolor;
-
+#ifndef ESP8266
   boolean  hwSPI;
+#endif
 #if defined (__AVR__) || defined(TEENSYDUINO)
   uint8_t mySPCR;
   volatile uint8_t *mosiport, *clkport, *dcport, *rsport, *csport;
