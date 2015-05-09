@@ -30,6 +30,12 @@
 #define hwSPI true
 #endif
 
+#define writeCmdDataTmp(cmd, ...)   {               \
+        const uint8_t tmp##cmd##_[] = { __VA_ARGS__ };              \
+        writeCmdData(cmd, (uint8_t *) &tmp##cmd##_[0], sizeof(tmp##cmd##_));  \
+}
+
+
 #ifndef ESP8266
 // Constructor when using software SPI.  All output pins are configurable.
 Adafruit_ILI9341::Adafruit_ILI9341(int8_t cs, int8_t dc, int8_t mosi,
@@ -381,108 +387,47 @@ void Adafruit_ILI9341::begin(void) {
   //if(cmdList) commandList(cmdList);
 
   if (hwSPI) spi_begin();
-  writecommand(0xEF);
-  writedata(0x03);
-  writedata(0x80);
-  writedata(0x02);
 
-  writecommand(0xCF);  
-  writedata(0x00); 
-  writedata(0XC1); 
-  writedata(0X30); 
+  writeCmdDataTmp(0xEF, 0x03, 0x80, 0x02);
+  writeCmdDataTmp(0xCF, 0x00, 0XC1, 0X30);
+  writeCmdDataTmp(0xED, 0x64, 0x03, 0X12, 0X81);
+  writeCmdDataTmp(0xE8, 0x85, 0x00, 0x78);
+  writeCmdDataTmp(0xCB, 0x39, 0x2C, 0x00, 0x34, 0x02);
+  writeCmdDataTmp(0xF7, 0x20);
+  writeCmdDataTmp(0xEA, 0x00, 0x00);
 
-  writecommand(0xED);  
-  writedata(0x64); 
-  writedata(0x03); 
-  writedata(0X12); 
-  writedata(0X81); 
- 
-  writecommand(0xE8);  
-  writedata(0x85); 
-  writedata(0x00); 
-  writedata(0x78); 
+  //Powercontrol
+  //VRH[5:0]
+  writeCmdDataTmp(ILI9341_PWCTR1, 0x23);
 
-  writecommand(0xCB);  
-  writedata(0x39); 
-  writedata(0x2C); 
-  writedata(0x00); 
-  writedata(0x34); 
-  writedata(0x02); 
- 
-  writecommand(0xF7);  
-  writedata(0x20); 
+  //Powercontrol
+  //SAP[2:0];BT[3:0]
+  writeCmdDataTmp(ILI9341_PWCTR2, 0x10);
 
-  writecommand(0xEA);  
-  writedata(0x00); 
-  writedata(0x00); 
- 
-  writecommand(ILI9341_PWCTR1);    //Power control 
-  writedata(0x23);   //VRH[5:0] 
- 
-  writecommand(ILI9341_PWCTR2);    //Power control 
-  writedata(0x10);   //SAP[2:0];BT[3:0] 
- 
-  writecommand(ILI9341_VMCTR1);    //VCM control 
-  writedata(0x3e); //对比度调节
-  writedata(0x28); 
+  //VCMcontrol
+  writeCmdDataTmp(ILI9341_VMCTR1, 0x3e, 0x28);
+
+  //VCMcontrol2
+  writeCmdDataTmp(ILI9341_VMCTR2, 0x86);
+
+  //MemoryAccessControl
+  writeCmdDataTmp(ILI9341_MADCTL, 0x48);
+
+  writeCmdDataTmp(ILI9341_PIXFMT, 0x55);
+  writeCmdDataTmp(ILI9341_FRMCTR1, 0x00, 0x18);
+
+  //DisplayFunctionControl
+  writeCmdDataTmp(ILI9341_DFUNCTR, 0x08, 0x82, 0x27);
+
+  //3GammaFunctionDisable
+  writeCmdDataTmp(0xF2, 0x00);
   
-  writecommand(ILI9341_VMCTR2);    //VCM control2 
-  writedata(0x86);  //--
- 
-  writecommand(ILI9341_MADCTL);    // Memory Access Control 
-  writedata(0x48);
-
-  writecommand(ILI9341_PIXFMT);    
-  writedata(0x55); 
+  //Gammacurveselected
+  writeCmdDataTmp(ILI9341_GAMMASET, 0x01);
   
-  writecommand(ILI9341_FRMCTR1);    
-  writedata(0x00);  
-  writedata(0x18); 
- 
-  writecommand(ILI9341_DFUNCTR);    // Display Function Control 
-  writedata(0x08); 
-  writedata(0x82);
-  writedata(0x27);  
- 
-  writecommand(0xF2);    // 3Gamma Function Disable 
-  writedata(0x00); 
- 
-  writecommand(ILI9341_GAMMASET);    //Gamma curve selected 
-  writedata(0x01); 
- 
-  writecommand(ILI9341_GMCTRP1);    //Set Gamma 
-  writedata(0x0F); 
-  writedata(0x31); 
-  writedata(0x2B); 
-  writedata(0x0C); 
-  writedata(0x0E); 
-  writedata(0x08); 
-  writedata(0x4E); 
-  writedata(0xF1); 
-  writedata(0x37); 
-  writedata(0x07); 
-  writedata(0x10); 
-  writedata(0x03); 
-  writedata(0x0E); 
-  writedata(0x09); 
-  writedata(0x00); 
-  
-  writecommand(ILI9341_GMCTRN1);    //Set Gamma 
-  writedata(0x00); 
-  writedata(0x0E); 
-  writedata(0x14); 
-  writedata(0x03); 
-  writedata(0x11); 
-  writedata(0x07); 
-  writedata(0x31); 
-  writedata(0xC1); 
-  writedata(0x48); 
-  writedata(0x08); 
-  writedata(0x0F); 
-  writedata(0x0C); 
-  writedata(0x31); 
-  writedata(0x36); 
-  writedata(0x0F); 
+  //SetGamma
+  writeCmdDataTmp(ILI9341_GMCTRP1, 0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00);
+  writeCmdDataTmp(ILI9341_GMCTRN1, 0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F);
 
   writecommand(ILI9341_SLPOUT);    //Exit Sleep 
   if (hwSPI) spi_end();
