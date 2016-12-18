@@ -131,7 +131,7 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
   Adafruit_ILI9341(int8_t _CS, int8_t _DC, int8_t _RST = -1);
 #endif
   void     begin(void),
-           setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1),
+           setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1),
            pushColor(uint16_t color),
            fillScreen(uint16_t color),
            drawPixel(int16_t x, int16_t y, uint16_t color),
