@@ -181,11 +181,11 @@ class Adafruit_ILI9341 : public Adafruit_GFX {
 #else
   void spiwrite(uint8_t);
   void spiwrite16(uint16_t data);
-  void spiwriteBytes(uint8_t * data, uint8_t size);
-  void spiwritePattern(uint8_t * data, uint8_t size, uint8_t repeat);
+  void spiwriteBytes(uint8_t * data, uint32_t size);
+  void spiwritePattern(uint8_t * data, uint8_t size, uint32_t repeat);
   void setAddrWindow_(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1);
 #endif
-
+  
   inline void spiCsHigh(void);
   inline void spiCsLow(void);
   inline void spiDcHigh(void);
